@@ -53,13 +53,14 @@ class nn:
 nStruct = np.array([784,500,250,100,10])
 
 # Set number of training data, epochs and test data
-Ntrain = 2000
-Nepoch = 10000
+Ntrain = 240000
+Nbatch = 10
+Nepoch = 24000
 Ntest = 1000
 
 # Set hyperparameters for FD and Gradient descent
-eps = 1 # 2 # 0.01
-trainMode = 2 # 1 = Update weights for every training point, 2 = Update weights using mean gradient from all training data
+eps = .5 # 2 # 0.01
+trainMode = 2 # 1 = Update weights for every training point(on-line GD), 2 = Update weights using mean gradient from all training data (GD)
 
 if trainMode == 1:
     loss = np.zeros(Ntrain)
@@ -67,17 +68,23 @@ elif trainMode == 2:
     loss = np.zeros(Nepoch)
 
 # Import training and test data
-TrainMat = np.load("HandwrittenDigits/TrainDigits.npy")
-TrainLabel = np.load("HandwrittenDigits/TrainLabels.npy")
-TestMat = np.load("HandwrittenDigits/TestDigits.npy")
-TestLabel = np.load("HandwrittenDigits/TestLabels.npy")
+TrainMat = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TrainDigits.npy")
+TrainLabel = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TrainLabels.npy")
+TestMat = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TestDigits.npy")
+TestLabel = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TestLabels.npy")
 
 # Contruct network
 digitsN = nn(nStruct)
 
-yDat = np.zeros((10,Ntrain))
-for i in range(Ntrain):
-    yDat[TrainLabel[0,i],i] = 1
+trainBatch = np.zeros((784,Nbatch,int(Ntrain/Nbatch)))
+yDat = np.zeros((10,Nbatch,int(Ntrain/Nbatch)))
+for i in range(int(Ntrain/Nbatch)):
+    trainBatch[:,:,i] = TrainMat[:,i*Nbatch:(i+1)*Nbatch]
+    for j in range(Nbatch):
+        yDat[TrainLabel[0,i*Nbatch + j],j,i] = 1
+
+# for i in range(Ntrain):
+#     yDat[TrainLabel[0,i],i] = 1
 
 # Training
 if trainMode == 1:
@@ -92,11 +99,13 @@ if trainMode == 1:
 
 elif trainMode == 2:
     for i in range(Nepoch):
-        diffErr = digitsN.forward(TrainMat[:,0]) - np.array(yDat[:,0], ndmin=2).T
+        # idBatch = np.random.randint(Ntrain,size=(Nbatch))
+        # diffErr = digitsN.forward(TrainMat[:,idBatch[0]]) - np.array(yDat[:,idBatch[0]], ndmin=2).T
+        diffErr = digitsN.forward(trainBatch[:,0,i]) - np.array(yDat[:,0,i], ndmin=2).T
         loss[i] += (0.5 * diffErr ** 2).sum().item()
         Rw, Rb = digitsN.backward(diffErr)
-        for j in range(1,Ntrain):
-            diffErr = digitsN.forward(TrainMat[:,j]) - np.array(yDat[:,j], ndmin=2).T
+        for j in range(1,Nbatch):
+            diffErr = digitsN.forward(trainBatch[:,j,i]) - np.array(yDat[:,j,i], ndmin=2).T
             loss[i] += (0.5 * diffErr ** 2).sum().item()
 
             DEDw, DEDb = digitsN.backward(diffErr)
@@ -105,10 +114,10 @@ elif trainMode == 2:
                 Rw[k] += DEDw[k]
                 Rb[k] += DEDb[k]
 
-        loss[i] /= Ntrain
+        loss[i] /= Nbatch
         for k in range(len(nStruct)-1):
-            Rw[k] /= Ntrain
-            Rb[k] /= Ntrain
+            Rw[k] /= Nbatch
+            Rb[k] /= Nbatch
         digitsN.updatePars(Rw,Rb,eps)
 
 # Plot Loss
