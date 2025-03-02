@@ -125,19 +125,20 @@ nStruct = np.array([1,100,1])
 
 # Set number of training data, epochs and test data
 Ntrain = 100
-Nepoch = 500
+Nepoch = 5000
 Ntest = 100
 
 # Set hyperparameters for FD and Gradient descent
 dx = 0.001
-eps = 5 # 2 # 0.01
+eps = 1 # 2 # 0.01
 alpha = 0.5
-trainMode = 2 # 1 = Update weights for every training point, 2 = Update weights using mean gradient from all training data
+trainMode = 1 # 1 = on-line Stochastic Gradient Descent (SGD), 2 = Gradient Descent (GD)
 gradMode = "backProp" # "backProp" or "FD"
-updateMode = "CG" # "momentum" "CG"
+updateMode = "GD" # "momentum" "GD"
 
 if trainMode == 1:
-    loss = np.zeros(Ntrain)
+    loss1 = np.zeros(int(Nepoch/Ntrain))
+    loss = np.zeros(Nepoch)
 elif trainMode == 2:
     loss = np.zeros(Nepoch)
 
@@ -160,24 +161,24 @@ sinN = nn(nStruct,"sigmoid",sinFunc)
 
 # Training
 if trainMode == 1:
-    for i in range(Ntrain):
+    for i in range(int(Nepoch/Ntrain)):
+        for j in range(Ntrain):
 
-        diffErr = sinN.forward(trainDat2[i]) - yDat2[i]
-        loss[i] = (0.5 * diffErr ** 2).item()
-        
-        if gradMode == "backProp":
-            DEDw, DEDb = sinN.backward()
-        elif gradMode == "FD":
-            DEDw, DEDb = sinN.backwardFD(dx)
+            diffErr = sinN.forward(trainDat2[j]) - yDat2[j]
+            loss1[i*Ntrain + j] += (0.5 * diffErr ** 2).item()
+            
+            if gradMode == "backProp":
+                DEDw, DEDb = sinN.backward()
+            elif gradMode == "FD":
+                DEDw, DEDb = sinN.backwardFD(dx)
 
-        if updateMode == "CG":
-            sinN.updatePars(DEDw, DEDb ,eps)
-        elif updateMode == "momentum":
-            if i > 0:
-                Dw, Db = sinN.momentumPars(DEDw, DEDb ,eps, alpha, Dw, Db)
-            else:
-                Dw, Db = sinN.updatePars(DEDw, DEDb ,eps)
-
+            if updateMode == "GD":
+                sinN.updatePars(DEDw, DEDb ,eps)
+            elif updateMode == "momentum":
+                if j > 0:
+                    Dw, Db = sinN.momentumPars(DEDw, DEDb ,eps, alpha, Dw, Db)
+                else:
+                    Dw, Db = sinN.updatePars(DEDw, DEDb ,eps)
 
 elif trainMode == 2:
     for i in range(Nepoch):
@@ -207,17 +208,31 @@ elif trainMode == 2:
         sinN.updatePars(Rw,Rb,eps)
 
 # Plot Loss
+# iterations = np.linspace(1,Nepoch,Nepoch)
+# plt.yscale("log")
+# plt.xscale("log")
+# plt.plot(iterations,loss1,label = "Stochastic Gradient Descent", color = 'b')
+# plt.plot(iterations,loss,label = "Gradient Descent", color = 'r')
+# plt.ylabel("Loss", fontsize = 21)
+# plt.xlabel("GD iterations", fontsize = 21)
+# plt.tick_params(axis='both', which='major', labelsize=14)
+# plt.grid()
+# plt.legend(fontsize = 12)
+# plt.show()
+
+# Plot Loss
 plt.yscale("log")
 plt.xscale("log")
-plt.plot(loss)
-plt.ylabel("Loss")
-plt.xlabel("Epoch")
+plt.plot(loss,color = 'b')
+plt.ylabel("Loss", fontsize = 21)
+plt.xlabel("GD iterations", fontsize = 21)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.grid()
 plt.show()
 
 print("Final loss = ",loss[-1])
 
 # Plot solution on test data
-
 testDat = np.linspace(0, 2*np.pi, num=Ntest)
 trueSol = []
 netSol = []
@@ -225,10 +240,14 @@ netSol = []
 for i in range(Ntest):
     netSol.append(sinN.forward((testDat[i]  -np.mean(trainDat)) / np.std(trainDat) ).item()  * np.std(yDat) +  np.mean(yDat))
     trueSol.append(np.sin(testDat[i]))
-    # netSol.append(sinN.forward(testDat[i]).item())
-    # trueSol.append(sinFunc(testDat[i]))
 
-plt.plot(testDat,netSol,testDat,trueSol)
-plt.ylabel("x")
-plt.xlabel("y")
+plt.plot(testDat,trueSol,color = 'b',label = "Analytic, d")
+plt.scatter(testDat,netSol,marker= "*",color = 'r',label = "Approximation, y")
+plt.ylabel("y", fontsize = 21, rotation =0)
+plt.xlabel("x", fontsize = 21)
+plt.xlim(0,np.pi*2)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.legend(fontsize = 14)
+plt.grid()
+plt.tight_layout()
 plt.show()

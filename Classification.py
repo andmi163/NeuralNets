@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import csv
 
 class nn:
     def __init__(n, nNodes):
@@ -50,28 +51,49 @@ class nn:
             n.b[i] = n.b[i] - eps*DEDb[i]
 
 # Stucture of the network
-nStruct = np.array([784,500,250,100,10])
+nStruct = np.array([784,128,10])
 
 # Set number of training data, epochs and test data
-Ntrain = 240000
+Ntrain = 60000
 Nbatch = 10
-Nepoch = 24000
-Ntest = 1000
+Nepoch = 2
+Ntest = 10000
 
 # Set hyperparameters for FD and Gradient descent
-eps = .5 # 2 # 0.01
+eps = 1 # 2 # 0.01
 trainMode = 2 # 1 = Update weights for every training point(on-line GD), 2 = Update weights using mean gradient from all training data (GD)
 
 if trainMode == 1:
     loss = np.zeros(Ntrain)
 elif trainMode == 2:
-    loss = np.zeros(Nepoch)
+    loss = np.zeros(int(Nepoch*(Ntrain/Nbatch)))
+
+TrainMat = np.empty((784,60000))
+TrainLabel = np.empty((1,60000))
+TestMat = np.empty((784,10000))
+TestLabel = np.empty((1,10000))
+
+with open('C:/Users/mandr/Documents/PHD/NeuralNets/mnist_train.csv', mode ='r') as file:    
+    csvFile = csv.reader(file)
+    i = 0
+    for lines in csvFile:
+        TrainLabel[0,i] = int(lines[0])
+        TrainMat[:,i] = [int(x)/255 for x in lines[1:]]
+        i+=1
+
+with open('C:/Users/mandr/Documents/PHD/NeuralNets/mnist_test.csv', mode ='r') as file:    
+    csvFile = csv.reader(file)
+    i = 0
+    for lines in csvFile:
+        TestLabel[0,i] = int(lines[0])
+        TestMat[:,i] = [int(x)/255 for x in lines[1:]]
+        i+=1
 
 # Import training and test data
-TrainMat = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TrainDigits.npy")
-TrainLabel = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TrainLabels.npy")
-TestMat = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TestDigits.npy")
-TestLabel = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TestLabels.npy")
+# TrainMat = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TrainDigits.npy")
+# TrainLabel = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TrainLabels.npy")
+# TestMat = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TestDigits.npy")
+# TestLabel = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TestLabels.npy")
 
 # Contruct network
 digitsN = nn(nStruct)
@@ -81,7 +103,7 @@ yDat = np.zeros((10,Nbatch,int(Ntrain/Nbatch)))
 for i in range(int(Ntrain/Nbatch)):
     trainBatch[:,:,i] = TrainMat[:,i*Nbatch:(i+1)*Nbatch]
     for j in range(Nbatch):
-        yDat[TrainLabel[0,i*Nbatch + j],j,i] = 1
+        yDat[int(TrainLabel[0,i*Nbatch + j]),j,i] = 1
 
 # for i in range(Ntrain):
 #     yDat[TrainLabel[0,i],i] = 1
@@ -98,27 +120,28 @@ if trainMode == 1:
         digitsN.updatePars(DEDw, DEDb ,eps)
 
 elif trainMode == 2:
-    for i in range(Nepoch):
-        # idBatch = np.random.randint(Ntrain,size=(Nbatch))
-        # diffErr = digitsN.forward(TrainMat[:,idBatch[0]]) - np.array(yDat[:,idBatch[0]], ndmin=2).T
-        diffErr = digitsN.forward(trainBatch[:,0,i]) - np.array(yDat[:,0,i], ndmin=2).T
-        loss[i] += (0.5 * diffErr ** 2).sum().item()
-        Rw, Rb = digitsN.backward(diffErr)
-        for j in range(1,Nbatch):
-            diffErr = digitsN.forward(trainBatch[:,j,i]) - np.array(yDat[:,j,i], ndmin=2).T
-            loss[i] += (0.5 * diffErr ** 2).sum().item()
+    for e in range(Nepoch):
+        for i in range(int(Ntrain/Nbatch)):
+            # idBatch = np.random.randint(Ntrain,size=(Nbatch))
+            # diffErr = digitsN.forward(TrainMat[:,idBatch[0]]) - np.array(yDat[:,idBatch[0]], ndmin=2).T
+            diffErr = digitsN.forward(trainBatch[:,0,i]) - np.array(yDat[:,0,i], ndmin=2).T
+            loss[e*int(Ntrain/Nbatch)+i] += (0.5 * diffErr ** 2).sum().item()
+            Rw, Rb = digitsN.backward(diffErr)
+            for j in range(1,Nbatch):
+                diffErr = digitsN.forward(trainBatch[:,j,i]) - np.array(yDat[:,j,i], ndmin=2).T
+                loss[e*int(Ntrain/Nbatch)+i] += (0.5 * diffErr ** 2).sum().item()
 
-            DEDw, DEDb = digitsN.backward(diffErr)
+                DEDw, DEDb = digitsN.backward(diffErr)
 
+                for k in range(len(nStruct)-1):
+                    Rw[k] += DEDw[k]
+                    Rb[k] += DEDb[k]
+
+            loss[e*int(Ntrain/Nbatch)+i] /= Nbatch
             for k in range(len(nStruct)-1):
-                Rw[k] += DEDw[k]
-                Rb[k] += DEDb[k]
-
-        loss[i] /= Nbatch
-        for k in range(len(nStruct)-1):
-            Rw[k] /= Nbatch
-            Rb[k] /= Nbatch
-        digitsN.updatePars(Rw,Rb,eps)
+                Rw[k] /= Nbatch
+                Rb[k] /= Nbatch
+            digitsN.updatePars(Rw,Rb,eps)
 
 # Plot Loss
 plt.yscale("log")
