@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+import os
 
 class nn:
     def __init__(n, nNodes, aFunc):
@@ -19,9 +20,11 @@ class nn:
         n.y = []
         n.x = []
         n.y.append(np.array(x, ndmin=2).T)
-        for i in range(1,n.nHLayer+1):
+        for i in range(1,n.nHLayer):
             n.x.append(np.matmul(n.w[i-1],n.y[i-1]) + n.b[i-1])
             n.y.append(n.active(n.x[i-1]))
+        n.x.append(np.matmul(n.w[n.nHLayer-1],n.y[n.nHLayer-1]) + n.b[n.nHLayer-1])
+        n.y.append(n.activeEnd(n.x[n.nHLayer-1]))
         return n.y[-1] 
 
     def active(n,x):
@@ -33,21 +36,36 @@ class nn:
         elif n.aFunc == "RELU":
             return np.piecewise(x,
                             [x > 0],
-                            [x, np.zeros(np.shape(x))],
+                            [lambda i: i, 0],
                             )
     
     def activeD(n,x,y):
-        if n.Func == "sigmoid":
+        if n.aFunc == "sigmoid":
             return y*(1-y)
-        elif n.Func == "RELU":
+        elif n.aFunc == "RELU":
             return np.piecewise(x,
                             [x > 0],
-                            [1, np.zeros(np.shape(x))],
+                            [1, 0],
                             )
     
+    def activeEnd(n,x):
+        if n.aFunc == "sigmoid":
+            return np.piecewise(x,
+                            [x > 0],
+                            [lambda i: 1 / (1 + np.exp(-i)), lambda i: np.exp(i) / (1 + np.exp(i))],
+                            )
+        elif n.aFunc == "RELU":
+            return np.exp(x)/np.sum(np.exp(x))
+
+    def activeEndD(n,x,y):
+        if n.aFunc == "sigmoid":
+            return y*(1-y)
+        elif n.aFunc == "RELU":
+            return np.exp(x)/np.sum(np.exp(x))
+
     def backward(n,diffErr):
         DEDy = diffErr # n.y[-1] - n.f(n.y[0])
-        DEDx = DEDy*n.activeD(n.x[-1],n.y[-1])
+        DEDx = DEDy*n.activeEndD(n.x[-1],n.y[-1])
         DEDw = [DEDx@n.y[-2].T]
         DEDb = [DEDx]
         for i in range(n.nHLayer-1,0,-1):
@@ -68,12 +86,13 @@ nStruct = np.array([784,128,10])
 # Set number of training data, epochs and test data
 Ntrain = 60000
 Nbatch = 10
-Nepoch = 2
+Nepoch = 5
 Ntest = 10000
 
 # Set hyperparameters for FD and Gradient descent
 eps = 1 # 2 # 0.01
 trainMode = 2 # 1 = on-line Stochastic Gradient Descent (SGD), 2 = Gradient Descent (GD)
+lossFunc = "MSE" # MSE, CE
 
 if trainMode == 1:
     loss = np.zeros(Ntrain)
@@ -87,7 +106,11 @@ TrainLabel = np.empty((1,60000))
 TestMat = np.empty((784,10000))
 TestLabel = np.empty((1,10000))
 
-with open('C:/Users/mandr/Documents/PHD/NeuralNets/mnist_train.csv', mode ='r') as file:    
+filePathTrain = os.path.join("data","mnist_train.csv")
+filePathTest = os.path.join("data","mnist_test.csv")
+
+# with open('C:/Users/mandr/Documents/PHD/NeuralNets/mnist_train.csv', mode ='r') as file:    
+with open(filePathTrain, mode ='r') as file:    
     csvFile = csv.reader(file)
     i = 0
     for lines in csvFile:
@@ -95,7 +118,8 @@ with open('C:/Users/mandr/Documents/PHD/NeuralNets/mnist_train.csv', mode ='r') 
         TrainMat[:,i] = [int(x)/255 for x in lines[1:]]
         i+=1
 
-with open('C:/Users/mandr/Documents/PHD/NeuralNets/mnist_test.csv', mode ='r') as file:    
+# with open('C:/Users/mandr/Documents/PHD/NeuralNets/mnist_test.csv', mode ='r') as file:    
+with open(filePathTest, mode ='r') as file:    
     csvFile = csv.reader(file)
     i = 0
     for lines in csvFile:

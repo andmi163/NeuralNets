@@ -233,19 +233,7 @@ for e in range(M):
 
     errFD[e] /= Ntest
 
-# Plot test errors against Epochs
-# fig, ax = plt.subplots()
-# ax.plot(NepochVec,errBackProp,"b",
-#        NepochVec,errFD,"r")
-# ax.legend(( "Backpropagation", "Central Difference"),fontsize=14)
-# ax.set_yscale('log')
-# ax.set_xscale('log')
-# ax.set_xlabel("Epoch", fontsize = 21)
-# ax.set_ylabel(r"$E_{test}$", fontsize = 21,rotation = 0)
-# ax.set_xlim(NepochVec[0],NepochVec[-1])
-# ax.tick_params(axis='both', which='major', labelsize=14)
-# ax.grid()
-
+# Save output to plot using "plotFDresults.py"
 with open('errBackProp.npy', 'wb') as f:
     np.save(f, errBackProp)
 with open('errFD.npy', 'wb') as f:
@@ -255,14 +243,3 @@ with open('totBackTime.npy', 'wb') as f:
 with open('totFDTime.npy', 'wb') as f:
     np.save(f, totFDTime)
 
-# Plot test errors against time
-# fig, ax = plt.subplots()
-# ax.plot(totBackTime,errBackProp,"b",
-#        totFDTime,errFD,"r")
-# ax.legend(( "Backpropagation", "Central Difference"),fontsize=14)
-# ax.set_yscale('log')
-# ax.set_xscale('log')
-# ax.set_xlabel("wall time (s)", fontsize = 21)
-# ax.set_ylabel(r"$E_{test}$", fontsize = 21,rotation = 0)
-# ax.tick_params(axis='both', which='major', labelsize=14)
-# ax.grid()
