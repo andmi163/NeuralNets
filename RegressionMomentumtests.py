@@ -211,7 +211,7 @@ nStruct = np.array([1,100,1])
 
 # Set number of training data, epochs and test data
 Ntrain = 100
-NepochVec = [1, 2, 10, 20, 100, 200, 1000, 2000, 10000]
+NepochVec = [2, 4, 8, 16, 32, 64, 120, 256, 512, 1024, 2048, 4096, 8192]
 M = len(NepochVec)
 Ntest = 100
 
@@ -233,19 +233,15 @@ for i in range(M):
 loss = []
 err2 = []
 for i in range(M):
-    E, testDat, trueSol, netSol = trainModel(Ntrain, Ntest, NepochVec[i], dx, eps, alpha, trainMode, gradMode, "momentum")
+    E, testDat, trueSol, netSol = trainModel(Ntrain, Ntest, NepochVec[i], dx, eps, 0.1, trainMode, gradMode, "momentum")
     loss.append(E)
     err2.append(np.sqrt(np.sum((np.array(trueSol) - np.array(netSol))**2))/Ntest)
 
-# # Plot Loss
-plt.yscale("log")
-plt.xscale("log")
-plt.plot(NepochVec,err,color = 'b')
-plt.plot(NepochVec,err2,color = 'r')
-plt.ylabel("Loss", fontsize = 21)
-plt.xlabel("GD iterations", fontsize = 21)
-plt.tick_params(axis='both', which='major', labelsize=14)
-plt.grid()
-plt.tight_layout()
-plt.legend(fontsize = 14)
-plt.show()
+with open('errGD.npy', 'wb') as f:
+    np.save(f, err)
+with open('errMomentum.npy', 'wb') as f:
+    np.save(f, err2)
+    
+print("GD error = ", err)
+print("Momentum error = ", err2)
+
