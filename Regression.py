@@ -77,8 +77,8 @@ class nn:
         for i in range(n.nHLayer-1):
             Dw.append(-eps*DEDw[i])
             Db.append(-eps*DEDb[i])
-            n.w[i] = n.w[i] - Dw[i] + alpha*DwOld[i]
-            n.b[i] = n.b[i] - Db[i] + alpha*DbOld[i]
+            n.w[i] = n.w[i] + Dw[i] + alpha*DwOld[i]
+            n.b[i] = n.b[i] + Db[i] + alpha*DbOld[i]
         return Dw, Db
 
     def backwardFD(n,dx):
@@ -132,15 +132,11 @@ Ntest = 100
 dx = 0.001
 eps = 1 # 2 # 0.01
 alpha = 0.5
-trainMode = 1 # 1 = on-line Stochastic Gradient Descent (SGD), 2 = Gradient Descent (GD)
+trainMode = 2 # 1 = on-line Stochastic Gradient Descent (SGD), 2 = Gradient Descent (GD)
 gradMode = "backProp" # "backProp" or "FD"
-updateMode = "GD" # "momentum" "GD"
+updateMode = "momentum" # "momentum" "GD"
 
-if trainMode == 1:
-    loss1 = np.zeros(int(Nepoch/Ntrain))
-    loss = np.zeros(Nepoch)
-elif trainMode == 2:
-    loss = np.zeros(Nepoch)
+loss = np.zeros(Nepoch)
 
 trainDat = 2 * (np.pi) * (np.random.rand(Ntrain))
 yDat = np.sin(trainDat)
@@ -165,7 +161,7 @@ if trainMode == 1:
         for j in range(Ntrain):
 
             diffErr = sinN.forward(trainDat2[j]) - yDat2[j]
-            loss1[i*Ntrain + j] += (0.5 * diffErr ** 2).item()
+            loss[i*Ntrain + j] += (0.5 * diffErr ** 2).item()
             
             if gradMode == "backProp":
                 DEDw, DEDb = sinN.backward()
@@ -205,20 +201,13 @@ elif trainMode == 2:
         for k in range(len(nStruct)-1):
             Rw[k] /= Ntrain
             Rb[k] /= Ntrain
-        sinN.updatePars(Rw,Rb,eps)
-
-# Plot Loss
-# iterations = np.linspace(1,Nepoch,Nepoch)
-# plt.yscale("log")
-# plt.xscale("log")
-# plt.plot(iterations,loss1,label = "Stochastic Gradient Descent", color = 'b')
-# plt.plot(iterations,loss,label = "Gradient Descent", color = 'r')
-# plt.ylabel("Loss", fontsize = 21)
-# plt.xlabel("GD iterations", fontsize = 21)
-# plt.tick_params(axis='both', which='major', labelsize=14)
-# plt.grid()
-# plt.legend(fontsize = 12)
-# plt.show()
+        if updateMode == "GD":
+                sinN.updatePars(Rw, Rb ,eps)
+        elif updateMode == "momentum":
+            if i > 0:
+                Dw, Db = sinN.momentumPars(Rw, Rb ,eps, alpha, Dw, Db)
+            else:
+                Dw, Db = sinN.updatePars(Rw, Rb ,eps)
 
 # Plot Loss
 plt.yscale("log")
