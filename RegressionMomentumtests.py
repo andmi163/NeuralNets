@@ -230,27 +230,22 @@ for i in range(M):
     loss.append(E)
     err.append(np.sqrt(np.sum((np.array(trueSol) - np.array(netSol))**2))/Ntest)
 
+loss = []
+err2 = []
+for i in range(M):
+    E, testDat, trueSol, netSol = trainModel(Ntrain, Ntest, NepochVec[i], dx, eps, alpha, trainMode, gradMode, "momentum")
+    loss.append(E)
+    err2.append(np.sqrt(np.sum((np.array(trueSol) - np.array(netSol))**2))/Ntest)
+
 # # Plot Loss
 plt.yscale("log")
 plt.xscale("log")
 plt.plot(NepochVec,err,color = 'b')
-# plt.plot(loss,color = 'b')
-# plt.ylabel("Loss", fontsize = 21)
-# plt.xlabel("GD iterations", fontsize = 21)
-# plt.tick_params(axis='both', which='major', labelsize=14)
-# plt.grid()
-# plt.show()
-
-# print("Final loss = ",loss[-1])
-
-
-# plt.plot(testDat,trueSol,color = 'b',label = "Analytic, d")
-# plt.scatter(testDat,netSol,marker= "*",color = 'r',label = "Approximation, y")
-# plt.ylabel("y", fontsize = 21, rotation =0)
-# plt.xlabel("x", fontsize = 21)
-# plt.xlim(0,np.pi*2)
-# plt.tick_params(axis='both', which='major', labelsize=14)
-# plt.legend(fontsize = 14)
-# plt.grid()
-# plt.tight_layout()
-# plt.show()
+plt.plot(NepochVec,err2,color = 'r')
+plt.ylabel("Loss", fontsize = 21)
+plt.xlabel("GD iterations", fontsize = 21)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.grid()
+plt.tight_layout()
+plt.legend(fontsize = 14)
+plt.show()
