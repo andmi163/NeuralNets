@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 class nn:
     def __init__(n, nNodes, aFunc, f):
@@ -68,9 +69,6 @@ class nn:
             n.w[i] = n.w[i] + Dw[i]
             n.b[i] = n.b[i] + Db[i]
         return Dw, Db
-        # for i in range(n.nHLayer-1):
-        #     n.w[i] = n.w[i] - eps*DEDw[i]
-        #     n.b[i] = n.b[i] - eps*DEDb[i]
              
     def momentumPars(n,DEDw,DEDb,eps,alpha,DwOld,DbOld):
         Dw = []; Db = []
@@ -123,138 +121,148 @@ class nn:
 # Stucture of the network
 nStruct = np.array([1,100,1])
 
-# Set number of training data, epochs and test data
-Ntrain = 100
-Nepoch = 5000
-Ntest = 100
+NepochVec = [10, 25, 50, 75, 100, 125, 150, 175, 200] #, 1000, 2500, 5000, 7500, 10000]
 
-# Set hyperparameters for FD and Gradient descent
-dx = 0.001
-eps = 1 # 2 # 0.01
-alpha = 0.5
-gradMode = "backProp" # "backProp" or "FD"
-updateMode = "GD" # "momentum" "GD"
+M = len(NepochVec)
+errBackProp = np.zeros(M)
+errFD = np.zeros(M)
+totBackTime = np.zeros(M)
+totFDTime = np.zeros(M)
 
-loss = np.zeros(Nepoch)
+for e in range(M):
+    # Set number of training data, epochs and test data
+    Ntrain = 100
+    Nepoch = NepochVec[e] #5000
+    Ntest = 100
 
-trainDat = 2 * (np.pi) * (np.random.rand(Ntrain))
-yDat = np.sin(trainDat)
+    # Set hyperparameters for FD and Gradient descent
+    dx = 0.001
+    eps = 1 # 2 # 0.01
 
-# Scale the data
-yMean = np.mean(yDat)
-yStd = np.std(yDat)
-xMean = np.mean(trainDat)
-xStd = np.std(trainDat)
+    loss = np.zeros(Nepoch)
 
-trainDat2 = (trainDat - np.mean(trainDat)) / np.std(trainDat)
-yDat2 =(yDat - np.mean(yDat)) / np.std(yDat)
+    trainDat = 2 * (np.pi) * (np.random.rand(Ntrain))
+    yDat = np.sin(trainDat)
 
-sinFunc = lambda x:(np.sin((x*xStd)+xMean) - yMean)/yStd
+    # Scale the data
+    yMean = np.mean(yDat)
+    yStd = np.std(yDat)
+    xMean = np.mean(trainDat)
+    xStd = np.std(trainDat)
 
-# Contruct network
-sinN = nn(nStruct,"sigmoid",sinFunc)
+    trainDat2 = (trainDat - np.mean(trainDat)) / np.std(trainDat)
+    yDat2 =(yDat - np.mean(yDat)) / np.std(yDat)
 
-# Training
-for i in range(Nepoch):
-    diffErr = sinN.forward(trainDat2[0]) - yDat2[0]
-    loss[i] += (0.5 * diffErr ** 2).item()
-    if gradMode == "backProp":
-        Rw, Rb = sinN.backward()
-    elif gradMode == "FD":
-        Rw, Rb = sinN.backwardFD(dx)
-    for j in range(1,Ntrain):
-        diffErr = sinN.forward(trainDat2[j]) - yDat2[j]
+    sinFunc = lambda x:(np.sin((x*xStd)+xMean) - yMean)/yStd
+
+    # Contruct network
+    sinN = nn(nStruct,"sigmoid",sinFunc)
+
+    print("Doing backprop for Nepoch = ", Nepoch)
+
+    # Training
+    sEpochBackprop = time.time()
+    for i in range(Nepoch):
+        diffErr = sinN.forward(trainDat2[0]) - yDat2[0]
         loss[i] += (0.5 * diffErr ** 2).item()
-
-        if gradMode == "backProp":
+        Rw, Rb = sinN.backward()
+        for j in range(1,Ntrain):
+            diffErr = sinN.forward(trainDat2[j]) - yDat2[j]
+            loss[i] += (0.5 * diffErr ** 2).item()
             DEDw, DEDb = sinN.backward()
-        elif gradMode == "FD":
+
+            for k in range(len(nStruct)-1):
+                Rw[k] += DEDw[k]
+                Rb[k] += DEDb[k]
+
+        loss[i] /= Ntrain
+        for k in range(len(nStruct)-1):
+            Rw[k] /= Ntrain
+            Rb[k] /= Ntrain
+        sinN.updatePars(Rw,Rb,eps)    
+    eEpochBackprop = time.time()
+    totBackTime[e] = eEpochBackprop - sEpochBackprop
+
+    testDat = np.linspace(0, 2*np.pi, num=Ntest)
+    trueSol = []
+    netSol = []
+
+    for i in range(Ntest):
+        netSol.append(sinN.forward((testDat[i]  -np.mean(trainDat)) / np.std(trainDat) ).item()  * np.std(yDat) +  np.mean(yDat))
+        trueSol.append(np.sin(testDat[i]))
+        errBackProp[e] += (netSol[i] - trueSol[i])**2
+
+    errBackProp[e] /= Ntest
+
+    # Contruct network again
+    sinN = nn(nStruct,"sigmoid",sinFunc)
+
+    print("Doing FD for Nepoch = ", Nepoch)
+
+    # Training
+    sEpochFDprop = time.time()
+    for i in range(Nepoch):
+        diffErr = sinN.forward(trainDat2[0]) - yDat2[0]
+        loss[i] += (0.5 * diffErr ** 2).item()
+        Rw, Rb = sinN.backwardFD(dx)
+        for j in range(1,Ntrain):
+            diffErr = sinN.forward(trainDat2[j]) - yDat2[j]
+            loss[i] += (0.5 * diffErr ** 2).item()
             DEDw, DEDb = sinN.backwardFD(dx)
 
+            for k in range(len(nStruct)-1):
+                Rw[k] += DEDw[k]
+                Rb[k] += DEDb[k]
+
+        loss[i] /= Ntrain
         for k in range(len(nStruct)-1):
-            Rw[k] += DEDw[k]
-            Rb[k] += DEDb[k]
+            Rw[k] /= Ntrain
+            Rb[k] /= Ntrain
+        sinN.updatePars(Rw,Rb,eps)
+    eEpochFDprop = time.time()
+    totFDTime[e] = eEpochFDprop - sEpochFDprop
 
-    loss[i] /= Ntrain
-    for k in range(len(nStruct)-1):
-        Rw[k] /= Ntrain
-        Rb[k] /= Ntrain
-    sinN.updatePars(Rw,Rb,eps)
+    testDat = np.linspace(0, 2*np.pi, num=Ntest)
+    trueSol = []
+    netSol = []
 
+    for i in range(Ntest):
+        netSol.append(sinN.forward((testDat[i]  -np.mean(trainDat)) / np.std(trainDat) ).item()  * np.std(yDat) +  np.mean(yDat))
+        trueSol.append(np.sin(testDat[i]))
+        errFD[e] += (netSol[i] - trueSol[i])**2
 
-gradMode = "backProp" # "backProp" or "FD"
+    errFD[e] /= Ntest
 
-# Contruct network
-sinN = nn(nStruct,"sigmoid",sinFunc)
+# Plot test errors against Epochs
+# fig, ax = plt.subplots()
+# ax.plot(NepochVec,errBackProp,"b",
+#        NepochVec,errFD,"r")
+# ax.legend(( "Backpropagation", "Central Difference"),fontsize=14)
+# ax.set_yscale('log')
+# ax.set_xscale('log')
+# ax.set_xlabel("Epoch", fontsize = 21)
+# ax.set_ylabel(r"$E_{test}$", fontsize = 21,rotation = 0)
+# ax.set_xlim(NepochVec[0],NepochVec[-1])
+# ax.tick_params(axis='both', which='major', labelsize=14)
+# ax.grid()
 
-# Training
-for i in range(Nepoch):
-    diffErr = sinN.forward(trainDat2[0]) - yDat2[0]
-    loss[i] += (0.5 * diffErr ** 2).item()
-    if gradMode == "backProp":
-        Rw, Rb = sinN.backward()
-    elif gradMode == "FD":
-        Rw, Rb = sinN.backwardFD(dx)
-    for j in range(1,Ntrain):
-        diffErr = sinN.forward(trainDat2[j]) - yDat2[j]
-        loss[i] += (0.5 * diffErr ** 2).item()
+with open('errBackProp.npy', 'wb') as f:
+    np.save(f, errBackProp)
+with open('errFD.npy', 'wb') as f:
+    np.save(f, errFD)
+with open('totBackTime.npy', 'wb') as f:
+    np.save(f, totBackTime)
+with open('totFDTime.npy', 'wb') as f:
+    np.save(f, totFDTime)
 
-        if gradMode == "backProp":
-            DEDw, DEDb = sinN.backward()
-        elif gradMode == "FD":
-            DEDw, DEDb = sinN.backwardFD(dx)
-
-        for k in range(len(nStruct)-1):
-            Rw[k] += DEDw[k]
-            Rb[k] += DEDb[k]
-
-    loss[i] /= Ntrain
-    for k in range(len(nStruct)-1):
-        Rw[k] /= Ntrain
-        Rb[k] /= Ntrain
-    sinN.updatePars(Rw,Rb,eps)
-    
-# Plot Loss
-# iterations = np.linspace(1,Nepoch,Nepoch)
-# plt.yscale("log")
-# plt.xscale("log")
-# plt.plot(iterations,loss1,label = "Stochastic Gradient Descent", color = 'b')
-# plt.plot(iterations,loss,label = "Gradient Descent", color = 'r')
-# plt.ylabel("Loss", fontsize = 21)
-# plt.xlabel("GD iterations", fontsize = 21)
-# plt.tick_params(axis='both', which='major', labelsize=14)
-# plt.grid()
-# plt.legend(fontsize = 12)
-# plt.show()
-
-# Plot Loss
-plt.yscale("log")
-plt.xscale("log")
-plt.plot(loss,color = 'b')
-plt.ylabel("Loss", fontsize = 21)
-plt.xlabel("GD iterations", fontsize = 21)
-plt.tick_params(axis='both', which='major', labelsize=14)
-plt.grid()
-plt.show()
-
-print("Final loss = ",loss[-1])
-
-# Plot solution on test data
-testDat = np.linspace(0, 2*np.pi, num=Ntest)
-trueSol = []
-netSol = []
-
-for i in range(Ntest):
-    netSol.append(sinN.forward((testDat[i]  -np.mean(trainDat)) / np.std(trainDat) ).item()  * np.std(yDat) +  np.mean(yDat))
-    trueSol.append(np.sin(testDat[i]))
-
-plt.plot(testDat,trueSol,color = 'b',label = "Analytic, d")
-plt.scatter(testDat,netSol,marker= "*",color = 'r',label = "Approximation, y")
-plt.ylabel("y", fontsize = 21, rotation =0)
-plt.xlabel("x", fontsize = 21)
-plt.xlim(0,np.pi*2)
-plt.tick_params(axis='both', which='major', labelsize=14)
-plt.legend(fontsize = 14)
-plt.grid()
-plt.tight_layout()
-plt.show()
+# Plot test errors against time
+# fig, ax = plt.subplots()
+# ax.plot(totBackTime,errBackProp,"b",
+#        totFDTime,errFD,"r")
+# ax.legend(( "Backpropagation", "Central Difference"),fontsize=14)
+# ax.set_yscale('log')
+# ax.set_xscale('log')
+# ax.set_xlabel("wall time (s)", fontsize = 21)
+# ax.set_ylabel(r"$E_{test}$", fontsize = 21,rotation = 0)
+# ax.tick_params(axis='both', which='major', labelsize=14)
+# ax.grid()

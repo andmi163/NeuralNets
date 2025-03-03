@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 import csv
 
 class nn:
-    def __init__(n, nNodes):
+    def __init__(n, nNodes, aFunc):
         n.nHLayer = len(nNodes)-1
         n.nNodes = nNodes
+        n.aFunc = aFunc
         n.w = []
         n.b = []
         n.y = []
@@ -24,23 +25,34 @@ class nn:
         return n.y[-1] 
 
     def active(n,x):
-        return np.piecewise(x,
+        if n.aFunc == "sigmoid":
+            return np.piecewise(x,
                             [x > 0],
                             [lambda i: 1 / (1 + np.exp(-i)), lambda i: np.exp(i) / (1 + np.exp(i))],
                             )
-
+        elif n.aFunc == "RELU":
+            return np.piecewise(x,
+                            [x > 0],
+                            [x, np.zeros(np.shape(x))],
+                            )
     
-    def activeD(n,y):
-        return y*(1-y)
+    def activeD(n,x,y):
+        if n.Func == "sigmoid":
+            return y*(1-y)
+        elif n.Func == "RELU":
+            return np.piecewise(x,
+                            [x > 0],
+                            [1, np.zeros(np.shape(x))],
+                            )
     
     def backward(n,diffErr):
         DEDy = diffErr # n.y[-1] - n.f(n.y[0])
-        DEDx = DEDy*n.activeD(n.y[-1])
+        DEDx = DEDy*n.activeD(n.x[-1],n.y[-1])
         DEDw = [DEDx@n.y[-2].T]
         DEDb = [DEDx]
         for i in range(n.nHLayer-1,0,-1):
             DEDy = n.w[i].T@DEDx
-            DEDx = DEDy*n.activeD(n.y[i])
+            DEDx = DEDy*n.activeD(n.x[i-1],n.y[i])
             DEDw.insert(0,DEDx@n.y[i-1].T)
             DEDb.insert(0,DEDx)
         return DEDw, DEDb 
@@ -61,12 +73,14 @@ Ntest = 10000
 
 # Set hyperparameters for FD and Gradient descent
 eps = 1 # 2 # 0.01
-trainMode = 2 # 1 = Update weights for every training point(on-line GD), 2 = Update weights using mean gradient from all training data (GD)
+trainMode = 2 # 1 = on-line Stochastic Gradient Descent (SGD), 2 = Gradient Descent (GD)
 
 if trainMode == 1:
     loss = np.zeros(Ntrain)
 elif trainMode == 2:
     loss = np.zeros(int(Nepoch*(Ntrain/Nbatch)))
+
+# Import training and test data
 
 TrainMat = np.empty((784,60000))
 TrainLabel = np.empty((1,60000))
@@ -89,24 +103,16 @@ with open('C:/Users/mandr/Documents/PHD/NeuralNets/mnist_test.csv', mode ='r') a
         TestMat[:,i] = [int(x)/255 for x in lines[1:]]
         i+=1
 
-# Import training and test data
-# TrainMat = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TrainDigits.npy")
-# TrainLabel = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TrainLabels.npy")
-# TestMat = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TestDigits.npy")
-# TestLabel = np.load("C:/Users/mandr/Documents/PHD/NeuralNets/HandwrittenDigits/TestLabels.npy")
-
 # Contruct network
-digitsN = nn(nStruct)
+digitsN = nn(nStruct,"sigmoid")
 
+# Make training batches
 trainBatch = np.zeros((784,Nbatch,int(Ntrain/Nbatch)))
 yDat = np.zeros((10,Nbatch,int(Ntrain/Nbatch)))
 for i in range(int(Ntrain/Nbatch)):
     trainBatch[:,:,i] = TrainMat[:,i*Nbatch:(i+1)*Nbatch]
     for j in range(Nbatch):
         yDat[int(TrainLabel[0,i*Nbatch + j]),j,i] = 1
-
-# for i in range(Ntrain):
-#     yDat[TrainLabel[0,i],i] = 1
 
 # Training
 if trainMode == 1:
