@@ -5,19 +5,29 @@ import os
 NepochVec = [10, 50, 100, 250, 500, 750, 1000] 
 NepochVec2 = [2, 4, 8, 16, 32, 64, 120, 256, 512, 1024, 2048, 4096, 8192]
 
-# pathErrBackProp = os.path.join("data","errBackProp.npy")
-# pathErrFD = os.path.join("data","errFD.npy")
-# pathTotBackTime = os.path.join("data","totBackTime.npy")
-# pathFDTime = os.path.join("data","totFDTime.npy")
-# pathPercentage =  os.path.join("data","percentage.npy")
+pathErrBackProp = os.path.join("data","errBackProp.npy")
+pathErrFD = os.path.join("data","errFD.npy")
+pathTotBackTime = os.path.join("data","totBackTime.npy")
+pathFDTime = os.path.join("data","totFDTime.npy")
+pathPercentage =  os.path.join("data","percentage.npy")
+pathErrMomentum = os.path.join("data","errMomentum.npy")
+pathTotBackTime = os.path.join("data","totBackTime.npy")
 
-errBackProp = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/errBackProp.npy')
-errFD = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/errFD.npy')
-errGD = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/errGD.npy')
-errMomentum = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/errMomentum.npy')
-totBackTime = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/totBackTime.npy')
-totFDTime = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/totFDTime.npy')
-percentage = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/percentage.npy')
+errBackProp = np.load(pathErrBackProp)
+errFD = np.load(pathErrFD)
+errGD = np.load(pathTotBackTime)
+errMomentum = np.load(pathErrMomentum)
+totBackTime = np.load(pathTotBackTime)
+totFDTime = np.load(pathFDTime)
+percentage = np.load(pathPercentage)
+
+# errBackProp = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/errBackProp.npy')
+# errFD = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/errFD.npy')
+# errGD = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/errGD.npy')
+# errMomentum = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/errMomentum.npy')
+# totBackTime = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/totBackTime.npy')
+# totFDTime = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/totFDTime.npy')
+# percentage = np.load('C:/Users/mandr/Documents/PHD/NeuralNets/data/percentage.npy')
 
 # Plot test errors against time
 fig, axTime = plt.subplots()
